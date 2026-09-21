@@ -1,3 +1,4 @@
+@'
 name: Terraform Apply
 
 on:
@@ -5,21 +6,15 @@ on:
     paths:
       - 'terraform/**'
       - 'app/**'
-      - '.github/workflows/terraform-apply.yml'
     branches:
       - main
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   terraform-apply:
-    name: Terraform Apply
     runs-on: ubuntu-latest
-    
-    # This creates a "production" environment that requires approval
-    environment: production
     
     env:
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -27,7 +22,6 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       TF_IN_AUTOMATION: true
-      TF_VERSION: 1.5.0
     
     steps:
       - name: Checkout code
@@ -36,97 +30,21 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: ${{ env.TF_VERSION }}
+          terraform_version: 1.5.0
       
       - name: Terraform Init
         run: terraform init -input=false
         working-directory: ./terraform
       
       - name: Terraform Plan
-        id: plan
-        run: |
-          terraform plan -out=tfplan -input=false
+        run: terraform plan -input=false
         working-directory: ./terraform
       
       - name: Terraform Apply
-        id: apply
-        run: |
-          terraform apply -input=false tfplan
-          echo "apply_successful=true" >> $GITHUB_OUTPUT
+        run: terraform apply -auto-approve
         working-directory: ./terraform
       
-      - name: Get Terraform Outputs
-        id: outputs
-        run: |
-          terraform output -json > outputs.json
-          APP_URL=$(terraform output -raw static_web_app_url)
-          echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+      - name: Display Outputs
+        run: terraform output
         working-directory: ./terraform
-      
-      - name: Deployment Summary
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number || 0,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## ✅ Deployment Successful!
-            
-- **Infrastructure**: Updated via Terraform
-- **Environment**: Production
-- **Status**: Active and ready
-
-[View Application](${{ steps.outputs.outputs.app_url }})`,
-            }).catch(() => {
-              console.log('No PR associated with this push');
-            });
-      
-      - name: Post Deployment Status
-        run: |
-          echo "✅ Deployment completed successfully"
-          echo "Application URL: ${{ steps.outputs.outputs.app_url }}"
-
-  post-deploy-tests:
-    name: Post-Deployment Tests
-    runs-on: ubuntu-latest
-    needs: terraform-apply
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Health Check
-        run: |
-          RETRY=0
-          while [ $RETRY -lt 5 ]; do
-            if curl -f https://${{ needs.terraform-apply.outputs.app_url }} > /dev/null 2>&1; then
-              echo "✅ Application is healthy"
-              exit 0
-            fi
-            RETRY=$((RETRY+1))
-            echo "Attempt $RETRY/5 - Application not ready, retrying in 10 seconds..."
-            sleep 10
-          done
-          echo "❌ Application health check failed"
-          exit 1
-        continue-on-error: true
-
-  failure-notification:
-    name: Notify on Failure
-    runs-on: ubuntu-latest
-    if: failure()
-    needs: terraform-apply
-    
-    steps:
-      - name: Create Issue on Failure
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: '🚨 Deployment Failed',
-              body: `Terraform apply failed on commit: ${context.sha}\n\nCheck the workflow run: ${context.server_url}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              labels: ['bug', 'deployment']
-            })
+'@ | Out-File -FilePath .github/workflows/terraform-apply.yml -Encoding UTF8
