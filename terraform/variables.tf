@@ -15,7 +15,7 @@ variable "location" {
   description = "Azure region for resources"
   
   validation {
-    condition     = contains(["West Europe", "North Europe", "East US", "UK South"], var.location)
+    condition     = contains(["West Europe", "East US 2", "Central US", "East Asia"], var.location)
     error_message = "Location must be a supported Azure region."
   }
 }
