@@ -1,47 +1,24 @@
 @'
 name: Terraform Plan
-
 on:
   pull_request:
-    paths:
-      - 'terraform/**'
-      - 'app/**'
     branches:
       - main
-
-permissions:
-  pull-requests: write
-  contents: read
-
 jobs:
-  terraform-plan:
+  plan:
     runs-on: ubuntu-latest
-    
     env:
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      TF_IN_AUTOMATION: true
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.5.0
-      
-      - name: Terraform Init
-        run: terraform init -input=false
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v2
+      - run: terraform init -input=false
         working-directory: ./terraform
-      
-      - name: Terraform Validate
-        run: terraform validate
+      - run: terraform validate
         working-directory: ./terraform
-      
-      - name: Terraform Plan
-        run: terraform plan -input=false
+      - run: terraform plan -input=false
         working-directory: ./terraform
-'@ | Out-File -FilePath .github/workflows/terraform-plan.yml -Encoding UTF8
+'@ | Out-File -NoNewline -Encoding ASCII .github/workflows/terraform-plan.yml
