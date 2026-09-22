@@ -11,11 +11,11 @@ variable "resource_group_name" {
 
 variable "location" {
   type        = string
-  default     = "West Europe"
+  default     = "East US 2"
   description = "Azure region for resources"
   
   validation {
-    condition     = contains(["West Europe", "East US 2", "Central US", "East Asia"], var.location)
+    condition     = contains(["East US 2", "Central US", "East Asia"], var.location)
     error_message = "Location must be a supported Azure region."
   }
 }
